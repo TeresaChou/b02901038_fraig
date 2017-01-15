@@ -64,19 +64,16 @@ public:
    void writeAag(ostream&) const;
    void writeGate(ostream&, CirGate*) const;
    
-   // other helping functions
-	bool removeGate(unsigned id, bool free = true);
+private:
+   // helping functions
+	bool removeGate(unsigned id);
 	bool mergeGate(unsigned idfrom, unsigned idto);
-	string getSymb(unsigned id) const {
-		map<unsigned, string>::const_iterator it = _symbolList.find(id);
-		if(it == _symbolList.end())	return "";
-		return it->second;
-	}
+   bool replaceGate(unsigned id, bool con, short number);
+   bool freeGate(unsigned id, CirGate* target);
+   bool removeFromAigList(unsigned id);
+	string getSymb(unsigned id) const;
 	void setFloatingList(bool AigOnly = false);
 	void setUnUsedList(bool AigOnly = false);
-
-private:
-	
 
    ofstream				        *_simLog;
 	map<unsigned, CirGate*>		_gateList;

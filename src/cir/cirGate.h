@@ -66,14 +66,15 @@ protected:
 		CirGateSP(size_t literal): _gateSP(literal*8 + FLT) {}
 
 		bool operator == (const CirGateSP& comp) const { return (_gateSP == comp._gateSP); }
+      bool operator < (const CirGateSP& comp) const { return (literal() < comp.literal()); }
 
 		CirGate* gate() const { return (CirGate*)(_gateSP & ~(size_t)NEG); }
 		bool isInv() const { return (_gateSP & NEG); }
+		bool isFlt() const { return (_gateSP & FLT)/2; }
 		unsigned literal() const {
 			if(isFlt())	return _gateSP/8;
 			return ( gate()->getGateID()*2 + (isInv()? 1: 0) ); 
 		}
-		bool isFlt() const { return (_gateSP & FLT)/2; }
 
 		size_t	_gateSP;
 	};
@@ -86,6 +87,8 @@ public:
 	void changeFanin(CirGateSP from, CirGateSP to);
 	void delFanout(CirGateSP p);
 	void mergeInto(CirGate* host);
+   void replaceBy(CirGate* gate, unsigned sign);
+   opt checkOpt() const;
 	bool floating() const;
 	bool unUsed() const { return _fanout.empty(); }
 	unsigned faninLiteral(size_t i) const { return _fanin[i].literal(); }
@@ -111,8 +114,14 @@ public:
 	// member function connectLink() has to be called afterward to link them as pointers
 	AigGate(unsigned id, unsigned line, size_t input1, size_t input2)
 		: CirGate(id, line) {
-		_fanin.push_back(CirGateSP(input1));
-		_fanin.push_back(CirGateSP(input2));
+      if(input1 < input2){
+         _fanin.push_back(CirGateSP(input1));
+         _fanin.push_back(CirGateSP(input2));
+      }
+      else {
+         _fanin.push_back(CirGateSP(input2));
+         _fanin.push_back(CirGateSP(input1));
+      }
 	}
 	~AigGate() {}
 

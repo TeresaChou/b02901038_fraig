@@ -108,6 +108,7 @@ void
 CirGate::clearFanin() {
 	unsigned sign;
 	for(vector<CirGateSP>::iterator it = _fanin.begin(); it!=_fanin.end(); it++) {
+      if(it->isFlt())   continue;
 		sign = (it->isInv()? 1: 0);
 		it->gate()->delFanout(CirGateSP(this, sign));
 	}
@@ -119,6 +120,7 @@ CirGate::addFanout(CirGateSP p)
 	for(vector<CirGateSP>::iterator it = _fanout.begin(); it!=_fanout.end(); it++)		
 		if(*it == p)	return false;
 	_fanout.push_back(p);
+   ::sort(_fanout.begin(), _fanout.end());
 	return true;
 }
 
@@ -159,6 +161,28 @@ CirGate::mergeInto(CirGate* host)
 		it->gate()->changeFanin(from, to);
 		host->addFanout(*it);
 	}
+}
+
+// con == true:
+// replace the gate with CONST 0 or 1
+// con == false:
+// replace the gate with one of its fanins
+void
+CirGate::replaceBy(CirGate* gate, unsigned sign)
+{
+   CirGateSP input(gate, sign);
+}
+
+opt
+CirGate::checkOpt()
+{
+   if(_fanin[0].literal() == 0)  return X_0;
+   if(_fanin[0].literal() == 1)  return X_1;
+   if(_fanin[0].literal()/2 == _fanin[1].literal()/2) {
+      if(_fanin[0].literal() == _fanin[1].literal())  return X_X;
+      else return X_nX;
+   }
+   return X_Y;
 }
 
 bool
