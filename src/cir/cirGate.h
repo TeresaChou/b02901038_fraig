@@ -60,7 +60,7 @@ public:
    void reportGate() const;
    void reportFanin(int level) const;
    void reportFanout(int level) const;
-	void DFSPrint(unsigned &order) const;
+	void setDFSList_RC(IdList& _dfsList) const;
 
 protected:
 	// "signed pointer"

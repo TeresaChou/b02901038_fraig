@@ -32,9 +32,15 @@ public:
    // Access functions
    // return '0' if "gid" corresponds to an undefined gate.
    CirGate* getGate(unsigned gid) const {
-		map<unsigned, CirGate*>::const_iterator it = _gateList.find(gid);
+		/*
+      map<unsigned, CirGate*>::const_iterator it = _gateList.find(gid);
 		if(it == _gateList.end())	return 0;
 		return it->second;
+      */
+      ID key(gid);
+      CirGate* result;
+      if(_gateList.query(key, result))   return result;
+      return 0;
 	}
 
    // Member functions about circuit construction
@@ -75,12 +81,14 @@ private:
    bool removeFromAigList(unsigned id);
 	void setFloatingList(bool AigOnly = false);
 	void setUnUsedList(bool AigOnly = false);
+   void setDFSList();
 
    ofstream				        *_simLog;
-	map<unsigned, CirGate*>		_gateList;
+	HashMap<ID, CirGate*>		_gateList;
 	map<unsigned, string>		_symbolList;
 	unsigned							_M, _I, _L, _O, _A;
-	IdList							_PIList, _POList, _AigList, _floatingList, _unUsedList;
+	IdList							_PIList, _POList, _AigList;
+   IdList                     _floatingList, _unUsedList, _dfsList;
 };
 
 #endif // CIR_MGR_H

@@ -89,19 +89,15 @@ CirGate::reportFanoutRC(int level, int tab) const
 	}
 }
 
-// called by netlistPrint
-// to be called recursively
 void
-CirGate::DFSPrint(unsigned &order) const
+CirGate::setDFSList_RC(IdList& _dfsList) const
 {
 	for(size_t i=0; i<_fanin.size(); i++){
-		if(!_fanin[i].isFlt()) _fanin[i].gate()->DFSPrint(order);
+		if(!_fanin[i].isFlt()) _fanin[i].gate()->setDFSList_RC(_dfsList);
 	}
 	if(_markFlag != _markFlagRef){
-		cout << "[" << order << "] ";
-		printGate();
+      _dfsList.push_back(_gateID);
 		_markFlag = _markFlagRef;
-		order++;
 	}
 }
 
@@ -150,6 +146,7 @@ CirGate::mergeInto(CirGate* host)
 	unsigned sign;
 	CirGateSP from(0), to(0);
 	for(vector<CirGateSP>::iterator it = _fanin.begin(); it!=_fanin.end(); it++) {
+      if(it->isFlt())   continue;
 		sign = it->isInv()? 1: 0;
 		from = CirGateSP(this, sign);
 		to = CirGateSP(host, sign);

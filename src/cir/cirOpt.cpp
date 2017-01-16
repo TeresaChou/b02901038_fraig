@@ -64,21 +64,24 @@ void
 CirMgr::optimize()
 {
    CirGate* target;
-   for(unsigned i=0; i<_AigList.size(); i++) {
-      target = getGate(_AigList[i]);
+   for(unsigned i=0, n = _dfsList.size(); i<n; i++) {
+      target = getGate(_dfsList[i]);
+      if(!target->isAig())   continue;
       opt check = target->checkOpt();
-      if(check == X_Y)  continue;
+      if(check == X_Y)  continue; 
       if(check == X_1 || check == X_X)  target->replaceByFanin(1);
       else if(check == X_0 || check == X_nX) {
          CirGate* constGate = getGate(0);
          target->replaceByConst(constGate, 0);
       }
-      freeGate(_AigList[i], target);
+      freeGate(_dfsList[i], target);
    }
    _unUsedList.clear();
    setUnUsedList();
 	_floatingList.clear();
 	setFloatingList();
+   _dfsList.clear();
+   setDFSList();
 }
 
 /***************************************************/
@@ -102,11 +105,12 @@ CirMgr::removeGate(unsigned id)
 bool
 CirMgr::mergeGate(unsigned idfrom, unsigned idto)
 {
+   if(idfrom == idto) return false;
 	CirGate* from = getGate(idfrom);
 	CirGate* to = getGate(idto);
 	if(!(from && to))	return false;
 	from->mergeInto(to);
-   cout << "Simpplifying: " << idto << " merging " << idfrom << " ..." << endl;
+   cout << "Simplifying: " << idto << " merging " << idfrom << " ..." << endl;
    freeGate(idfrom, from);
 	return true;
 }
@@ -116,7 +120,7 @@ CirMgr::freeGate(unsigned id, CirGate* target)
 {
    if(target == 0)   return false;
    removeFromAigList(id);
-   _gateList.erase(id);
+   _gateList.remove(id);
    delete target;
    return true;
 }
@@ -134,38 +138,3 @@ CirMgr::removeFromAigList(unsigned id)
 }
 
 
-// run through all the gates to check for gates with floating inputs and gates unused
-// store them in two lists
-void
-CirMgr::setFloatingList(bool AigOnly)
-{
-	CirGate* temp;
-	for(size_t i=0; i<_AigList.size(); i++){
-		temp = getGate(_AigList[i]);
-		if(temp->floating())	_floatingList.push_back(_AigList[i]);
-	}
-	if(!AigOnly){
-		for(size_t i=0; i<_POList.size(); i++){
-			temp = getGate(_POList[i]);
-			if(temp->floating())	_floatingList.push_back(_POList[i]);
-		}
-	}
-	::sort(_floatingList.begin(), _floatingList.end());
-}
-
-void
-CirMgr::setUnUsedList(bool AigOnly)
-{
-	CirGate* temp;
-	if(!AigOnly){
-		for(size_t i=0; i<_PIList.size(); i++){
-			temp = getGate(_PIList[i]);
-			if(temp->unUsed())	_unUsedList.push_back(_PIList[i]);
-		}
-	}
-	for(size_t i=0; i<_AigList.size(); i++){
-		temp = getGate(_AigList[i]);
-		if(temp->unUsed())	_unUsedList.push_back(_AigList[i]);
-	}
-	::sort(_unUsedList.begin(), _unUsedList.end());
-}

@@ -172,10 +172,9 @@ CirMgr::readCircuit(const string& fileName)
 	ss >> _A;
 	// all the gate are store in map _gateList
 	// every type of gate has its own IDList
-   _gateList.init(getHashSize(_M));
 	// Const 0
 	CirGate* c0 = new ConstGate;
-	_gateList.insert(0, c0);
+	_gateList[0] = c0;
 	// PIs
 	unsigned line = 1;
 	int content;
@@ -185,7 +184,7 @@ CirMgr::readCircuit(const string& fileName)
 		ss << str;					// only ss.str(str) would not work
 		ss >> content;
 		CirGate* pi = new PIGate(content/2, line);
-		_gateList.insert(content/2, pi);
+		_gateList[content/2] = pi;
 		_PIList.push_back(content/2);
 	}
 	// POs
@@ -195,7 +194,7 @@ CirMgr::readCircuit(const string& fileName)
 		ss << str;
 		ss >> content;
 		CirGate* po = new POGate(_M+i, line, content);
-		_gateList.insert(_M+i, po);
+		_gateList[_M+i] = po;
 		_POList.push_back(_M+i);
 	}
 	// AIGs
@@ -208,17 +207,16 @@ CirMgr::readCircuit(const string& fileName)
 		ss >> input1;	ss.ignore();
 		ss >> input2;
 		CirGate* aig = new AigGate(content/2, line, input1, input2);
-		_gateList.insert(content/2, aig);
+		_gateList[content/2] = aig;
 		_AigList.push_back(content/2);
 	}
 	// when gates are constructed, inputs are stored as literal ID
 	// now link them with pointers
-	for(unsigned i=0; i<_A; i++) {   getGate(_AigList[i])->connectLinks(); }
-	for(unsigned i=1; i<=_O; i++) {	getGate(_M+i)->connectLinks();	}
-	// set _floatingList, _unUsedList, and _dfsList
+	for(unsigned i=0; i<_A; i++) { _gateList[_AigList[i]]->connectLinks(); }
+	for(unsigned i=1; i<=_O; i++) {	_gateList[_M+i]->connectLinks();	}
+	// set the _floatingList and the _unUsedList
 	setFloatingList();
 	setUnUsedList();
-   setDFSList();
 	// symbols
 	// stored in map _symbolList
 	char head;
@@ -265,13 +263,22 @@ CirMgr::printSummary() const
 }
 
 void
-CirMgr::printNetlist() const
+CirMgr::printNetlist() const		// TODO: check
 {
+/*
    cout << endl;
    for (unsigned i = 0, n = _dfsList.size(); i < n; ++i) {
       cout << "[" << i << "] ";
-      getGate(_dfsList[i])->printGate();
+      _dfsList[i]->printGate();
    }
+*/
+	// PO post order
+	unsigned order = 0;
+	CirGate::_markFlagRef++;
+	cout << endl;
+	for(size_t i=0; i<_POList.size(); i++){
+		getGate(_POList[i])->DFSPrint(order);	// CirGate member function
+	}
 }
 
 void
@@ -357,50 +364,3 @@ CirMgr::getSymb(unsigned id) const
    if(it == _symbolList.end())	return "";
    return it->second;
 }
- 
-// run through all the gates to check for gates with floating inputs and gates unused
-// store them in two lists
-void
-CirMgr::setFloatingList(bool AigOnly)
-{
-	CirGate* temp;
-	for(size_t i=0; i<_AigList.size(); i++){
-		temp = getGate(_AigList[i]);
-		if(temp->floating())	_floatingList.push_back(_AigList[i]);
-	}
-	if(!AigOnly){
-		for(size_t i=0; i<_POList.size(); i++){
-			temp = getGate(_POList[i]);
-			if(temp->floating())	_floatingList.push_back(_POList[i]);
-		}
-	}
-	::sort(_floatingList.begin(), _floatingList.end());
-}
-
-void
-CirMgr::setUnUsedList(bool AigOnly)
-{
-	CirGate* temp;
-	if(!AigOnly){
-		for(size_t i=0; i<_PIList.size(); i++){
-			temp = getGate(_PIList[i]);
-			if(temp->unUsed())	_unUsedList.push_back(_PIList[i]);
-		}
-	}
-	for(size_t i=0; i<_AigList.size(); i++){
-		temp = getGate(_AigList[i]);
-		if(temp->unUsed())	_unUsedList.push_back(_AigList[i]);
-	}
-	::sort(_unUsedList.begin(), _unUsedList.end());
-}
-
-void
-CirMgr::setDFSList()
-{
-	// PO post order
-	CirGate::_markFlagRef++;
-	for(size_t i=0; i<_POList.size(); i++){
-		getGate(_POList[i])->setDFSList_RC(_dfsList);	// CirGate member function
-	}
-}
-
