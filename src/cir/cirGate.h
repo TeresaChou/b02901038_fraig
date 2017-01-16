@@ -25,6 +25,19 @@ extern CirMgr *cirMgr;
 //------------------------------------------------------------------------
 //   Define classes
 //------------------------------------------------------------------------
+class StrashKey
+{
+public:
+   StrashKey(): _key(0) {}
+   StrashKey(const size_t a, const size_t b) { _key = (a << 20) + b; }
+
+   size_t operator() () const { return _key; }
+   bool operator== (const StrashKey& k) const { return (k._key == _key); }
+
+private:
+   size_t   _key;
+};
+ 
 class CirGateSP;
 class CirGate
 {
@@ -40,6 +53,7 @@ public:
 	virtual bool isAig() const = 0;
    unsigned getLineNo() const { return _lineNo; }
 	unsigned getGateID() const { return _gateID; }
+   virtual StrashKey getStrashKey() const = 0;
 	
    // Printing functions
    virtual void printGate() const = 0;		// called by print netlist
@@ -65,9 +79,11 @@ protected:
 		CirGateSP(CirGate* p, size_t sign): _gateSP((size_t)p + sign) {}
 		CirGateSP(size_t literal): _gateSP(literal*8 + FLT) {}
 
+   public:
 		bool operator == (const CirGateSP& comp) const { return (_gateSP == comp._gateSP); }
       bool operator < (const CirGateSP& comp) const { return (literal() < comp.literal()); }
 
+   private:
 		CirGate* gate() const { return (CirGate*)(_gateSP & ~(size_t)NEG); }
 		bool isInv() const { return (_gateSP & NEG); }
 		bool isFlt() const { return (_gateSP & FLT)/2; }
@@ -87,7 +103,8 @@ public:
 	void changeFanin(CirGateSP from, CirGateSP to);
 	void delFanout(CirGateSP p);
 	void mergeInto(CirGate* host);
-   void replaceBy(CirGate* gate, unsigned sign);
+   void replaceByConst(CirGate* gate, unsigned sign);
+   void replaceByFanin(unsigned number);
    opt checkOpt() const;
 	bool floating() const;
 	bool unUsed() const { return _fanout.empty(); }
@@ -106,6 +123,7 @@ protected:
 	vector<CirGateSP>	_fanin;
 	vector<CirGateSP>	_fanout;
 };
+
 
 class AigGate	:public CirGate
 {
@@ -127,6 +145,7 @@ public:
 
    string getTypeStr() const { return "AIG"; }
 	bool isAig() const { return true; }
+   StrashKey getStrashKey() const { return StrashKey(_fanin[0]._gateSP, _fanin[1]._gateSP); } 
 	// link input nodes with signed pointer
 	// if node not found, leave it as literal ID
 	void connectLinks(){
@@ -169,6 +188,7 @@ public:
 	~PIGate() {}
 
    string getTypeStr() const { return "PI"; }
+   StrashKey getStrashKey() const { return StrashKey(); } 
 	bool isAig() const { return false; }
    void printGate() const {
 		cout << getTypeStr() << "  " << _gateID;
@@ -194,6 +214,7 @@ public:
 
    string getTypeStr() const { return "PO"; }
 	bool isAig() const { return false; }
+   StrashKey getStrashKey() const { return StrashKey(); } 
 	// link input nodes with signed pointer
 	// if node not found, leave it as literal ID
 	void connectLinks(){
@@ -227,6 +248,7 @@ public:
 
    string getTypeStr() const { return "CONST"; }
 	bool isAig() const { return false; }
+   StrashKey getStrashKey() const { return StrashKey(); } 
 	void connectLinks(){}
 	void printGate() const { cout << "CONST0" << endl; }
 private:

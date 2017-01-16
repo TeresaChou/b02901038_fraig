@@ -7,6 +7,7 @@
 ****************************************************************************/
 
 #include <cassert>
+#include <algorithm>
 #include "cirMgr.h"
 #include "cirGate.h"
 #include "util.h"
@@ -55,18 +56,29 @@ CirMgr::sweep()
 // _dfsList needs to be reconstructed afterwards
 // UNDEF gates may be delete if its fanout becomes empty...
 // 1. CONST 1 AND X = X
-// 2. CONST 0 AND X
-// 3. X AND X
-// 4. X AND !X
+// 2. CONST 0 AND X = 0
+// 3. X AND X = X
+// 4. X AND !X = 0
 // remember to update _unUsedList
 void
 CirMgr::optimize()
 {
-   CirGate* temp;
-      if(input1 < 2) {
-         
+   CirGate* target;
+   for(unsigned i=0; i<_AigList.size(); i++) {
+      target = getGate(_AigList[i]);
+      opt check = target->checkOpt();
+      if(check == X_Y)  continue;
+      if(check == X_1 || check == X_X)  target->replaceByFanin(1);
+      else if(check == X_0 || check == X_nX) {
+         CirGate* constGate = getGate(0);
+         target->replaceByConst(constGate, 0);
       }
+      freeGate(_AigList[i], target);
    }
+   _unUsedList.clear();
+   setUnUsedList();
+	_floatingList.clear();
+	setFloatingList();
 }
 
 /***************************************************/
@@ -94,45 +106,33 @@ CirMgr::mergeGate(unsigned idfrom, unsigned idto)
 	CirGate* to = getGate(idto);
 	if(!(from && to))	return false;
 	from->mergeInto(to);
+   cout << "Simpplifying: " << idto << " merging " << idfrom << " ..." << endl;
    freeGate(idfrom, from);
 	return true;
 }
 
 bool
-CirMgr::replaceGate(unsigned id, bool con, short number)
+CirMgr::freeGate(unsigned id, CirGate* target)
 {
-   CirGate* temp = getGate(id);
-   if(temp == 0)  return false;
-   temp->replaceBy(con, number);
-   freeGate(id, temp);
-   return true;
-}
-
-bool freeGate(unsigned id, CirGate* target)
-{
+   if(target == 0)   return false;
    removeFromAigList(id);
    _gateList.erase(id);
    delete target;
+   return true;
 }
 
 bool
-removeFromAigList(unsigned id)
+CirMgr::removeFromAigList(unsigned id)
 {
 	for(vector<unsigned>::iterator it = _AigList.begin(); it!=_AigList.end(); it++)
 		if(*it == id)	{
          _AigList.erase(it);
          _A--;
-         break;
+         return true;
       }
+   return false;
 }
 
-string
-CirMgr::getSymb(unsigned id) const
-{
-   map<unsigned, string>::const_iterator it = _symbolList.find(id);
-   if(it == _symbolList.end())	return "";
-   return it->second;
-}
 
 // run through all the gates to check for gates with floating inputs and gates unused
 // store them in two lists

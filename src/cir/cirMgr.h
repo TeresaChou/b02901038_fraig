@@ -64,14 +64,15 @@ public:
    void writeAag(ostream&) const;
    void writeGate(ostream&, CirGate*) const;
    
+   // other helping functions
+	string getSymb(unsigned id) const;
+
 private:
-   // helping functions
+   // private helping functions
 	bool removeGate(unsigned id);
 	bool mergeGate(unsigned idfrom, unsigned idto);
-   bool replaceGate(unsigned id, bool con, short number);
    bool freeGate(unsigned id, CirGate* target);
    bool removeFromAigList(unsigned id);
-	string getSymb(unsigned id) const;
 	void setFloatingList(bool AigOnly = false);
 	void setUnUsedList(bool AigOnly = false);
 

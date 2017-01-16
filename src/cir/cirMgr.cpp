@@ -357,3 +357,10 @@ CirMgr::writeGate(ostream& outfile, CirGate *g) const
 {
 }
 
+string
+CirMgr::getSymb(unsigned id) const
+{
+   map<unsigned, string>::const_iterator it = _symbolList.find(id);
+   if(it == _symbolList.end())	return "";
+   return it->second;
+}

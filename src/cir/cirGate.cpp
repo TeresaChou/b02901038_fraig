@@ -8,6 +8,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <algorithm>
 #include <sstream>
 #include <stdarg.h>
 #include <cassert>
@@ -104,6 +105,7 @@ CirGate::DFSPrint(unsigned &order) const
 	}
 }
 
+// doesn't change the _fanin list itself
 void
 CirGate::clearFanin() {
 	unsigned sign;
@@ -163,18 +165,44 @@ CirGate::mergeInto(CirGate* host)
 	}
 }
 
-// con == true:
-// replace the gate with CONST 0 or 1
-// con == false:
-// replace the gate with one of its fanins
 void
-CirGate::replaceBy(CirGate* gate, unsigned sign)
+CirGate::replaceByConst(CirGate* gate, unsigned sign)
 {
    CirGateSP input(gate, sign);
+   clearFanin();
+	for(vector<CirGateSP>::iterator it = _fanout.begin(); it!=_fanout.end(); it++) {
+      sign = it->isInv()? 1: 0;
+      it->gate()->changeFanin(CirGateSP(this, sign), input);
+   }
+   cout << "Simplifying: " << gate->getGateID() << " merging "
+        << _gateID << "..." << endl;
+}
+
+void
+CirGate::replaceByFanin(unsigned number)
+{
+   unsigned sign;
+   bool sign_in = _fanin[number].isInv();
+   CirGateSP to(0);
+   clearFanin();
+	for(vector<CirGateSP>::iterator it = _fanout.begin(); it!=_fanout.end(); it++) {
+      sign = it->isInv()? 1: 0;
+      if(sign_in) {
+         _fanin[number].gate()->addFanout(CirGateSP(it->gate(), (sign+1)%2));
+         to = CirGateSP(_fanin[number].gate(), (sign+1)%2);
+      }
+      else {
+         _fanin[number].gate()->addFanout(*it);
+         to = _fanin[number];
+      }
+      it->gate()->changeFanin(CirGateSP(this, sign), to);
+   }
+   cout << "Simplifying: " << _fanin[number].gate()->getGateID() << " merging "
+        << _gateID << "..." << endl;
 }
 
 opt
-CirGate::checkOpt()
+CirGate::checkOpt() const
 {
    if(_fanin[0].literal() == 0)  return X_0;
    if(_fanin[0].literal() == 1)  return X_1;

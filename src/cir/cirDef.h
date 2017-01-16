@@ -24,7 +24,7 @@ class SatSolver;
 
 enum opt
 {
-	X_1, X_0, X_X, X_nX, X_Y;
+	X_1, X_0, X_X, X_nX, X_Y
 };
 
 #endif // CIR_DEF_H
