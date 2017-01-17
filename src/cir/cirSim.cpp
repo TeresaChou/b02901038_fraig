@@ -11,6 +11,8 @@
 #include <iomanip>
 #include <algorithm>
 #include <cassert>
+#include <string>
+#include <sstream>
 #include "cirMgr.h"
 #include "cirGate.h"
 #include "util.h"
@@ -24,6 +26,7 @@ using namespace std;
 /*   Global variable and enum  */
 /*******************************/
 
+
 /**************************************/
 /*   Static varaibles and functions   */
 /**************************************/
@@ -31,30 +34,97 @@ using namespace std;
 /************************************************/
 /*   Public member functions about Simulation   */
 /************************************************/
+
 void
 CirMgr::randomSim()
 {
+   unsigned * inputs = new unsigned[_I];
+   unsigned count = 0, fail = 0;
+   while(!_FECReady || fail < 30) {
+      for(size_t i=0; i<_I; i++) inputs[i] = rnGen(INT_MAX);
+      if(simulate(inputs))   fail = 0;
+      else fail++;
+      writeSimLog(inputs);
+      count++;
+   }
+   cout << "MAX_FAILS = " << fail << endl
+        << count*sizeof(unsigned)*8 << "patterns simulated.";
 }
 
-// data member: ofstream* _simLog
 void
 CirMgr::fileSim(ifstream& patternFile)
 {
+   unsigned* inputs = new unsigned[_I];
+   char* buffer = new char[_I];
+   for(size_t i=0; i<_I; i++) inputs[i] = 0;
+	string str;
+	stringstream ss(str);
+   unsigned line = 0, digit = 0;
+   bool done = false, get;
+	while(!done) {
+      if(!getline(patternFile,str)) done = true;
+      else {
+         get = true;
+         if(str.length() != _I) {
+            cout << "Error: Pattern(" << str << ") legnth(" << str.length() << ") "
+                 << "does not match the number of inputs(" << _I << ") in the circuit!!" << endl;
+            get = false;
+         }
+         else 
+            for(size_t i=0; i<_I; i++)
+               if(str[i] != '0' && str[i] != '1') {
+                  cout << "Error: Pattern(" << str << ") contains non-0/1 character('"
+                       << str[i] << "')." << endl;
+                  get = false;
+               }
+         if(get) {
+            line++;
+            ss.str(""); ss.clear();
+            ss << str;
+            for(size_t i=0; i<_I; i++) {
+               ss >> buffer[i];
+               inputs[i] += ((unsigned)buffer[i]-48) << digit;
+            }
+            digit++;
+         }
+      }
+      if(digit >= (sizeof(unsigned)*8) || done) {
+         simulate(inputs);
+         writeSimLog(inputs, digit);
+         for(size_t i=0; i<_I; i++) inputs[i] = 0;
+         digit = 0;
+      }
+   }
+   cout << line << " patterns simulated." << endl;
+   delete inputs;
+   delete buffer;
 }
 
-void
-// something else
-// remember to set const and PIs
+bool
+CirMgr::simulate(unsigned* inputs)
+{
+   CirGate::_markFlagRef++;
+   CirGate* temp;
+   for(size_t i=0; i<_I; i++) {
+      temp = getGate(_PIList[i]);
+      temp->feedInput(inputs[i]);
+  }
+  return divideFEC();
+}
 
-void
+bool
 CirMgr::divideFEC()
 {
-   vector<FECGrp*>*  newFECList = new vector<FECGrp*>
-   FECGrp* oriGrp, newGrp;
+   bool divided;
+   vector<FECGrp*>*  newFECList = new vector<FECGrp*>;
+   FECGrp_p oriGrp, newGrp;
+   // for some reason I just have to use FECGrp_p instead of FECGrp*
+   // otherwise the compiler doesn't let me use them as parameter for function calling
    unsigned simVal;
-   for(size_t i = 0, n = _FECList.size(); i<n; i++) {
-      oriGrp = _FECList->pop_back();
-      HashMap<unsigned, FECGrp*> newGrps;
+   _FECReady = true;
+   for(size_t i = 0, n = _FECList->size(); i<n; i++) {
+      oriGrp = (*_FECList)[i];
+      HashMap<ID, FECGrp*> newGrps(getHashSize(_A));
       for(size_t j = 0, m = oriGrp->size(); j<m; j++) {
          simVal = (*oriGrp)[j]->getSimValue();
          if(newGrps.query(simVal, newGrp))   newGrp->push_back((*oriGrp)[j]);
@@ -64,24 +134,53 @@ CirMgr::divideFEC()
             newGrps.insert(simVal, newGrp);
          }
       }
-      for(HashMap<unsigned, FECGrp*>::iterator it = newGrps.begin(); it != newGrps.end(); it++) {
-         if(it->second->size() > 1) newFECList.push_back(it->second);
-         else delete it->second;
+      for(HashMap<ID, FECGrp*>::iterator it = newGrps.begin(); it != newGrps.end(); it++) {
+         if((*it).second->size() > 3) _FECReady = false;
+         if((*it).second->size() > 1) newFECList->push_back((*it).second);
+         else delete (*it).second;
       }
       delete oriGrp;
+      if(newGrps.begin()++ == newGrps.end()) divided = false;
+      else divided = true;
    }
    delete _FECList;
    _FECList = newFECList;
+   return divided;
+}
+
+bool
+CirMgr::writeSimLog(unsigned* inputs, unsigned n)
+{
+   if(!_simLog)   return false;
+   unsigned* outputs = new unsigned[_O];
+   for(size_t i=0; i<_O; i++) outputs[i] = getGate(_POList[i])->getSimValue();
+   for(size_t i=0; i<n; i++) {
+      for(size_t j=0; j<_I; j++) {
+         (*_simLog) << (inputs[j] & 1);
+         inputs[j] = inputs[j] >> 1;
+      }
+      (*_simLog) << ' ';
+      for(size_t j=0; j<_O; j++) {
+         (*_simLog) << (outputs[j] & 1);
+         outputs[j] = outputs[j] >> 1;
+      }
+      (*_simLog) << '\n';
+   }
+   return true;
 }
 
 unsigned
 CirGate::getSimValue()
 {
-   if(_markFlag == _markFlagRef) return _value;
-   // in case that I forget to set CONST 0
-   if(getTypeStr() == "CONST")   _value = 0;
+   if(_markFlag == _markFlagRef) {
+   	return _value;
+   }
+   if(getTypeStr() == "CONST")  {}
    // for PO
-   else if(!isAig()) _value = _fanin[0].gate()->getSimValue();
+   else if(!isAig()) {
+   	_value = _fanin[0].gate()->getSimValue();
+   	if(_fanin[0].isInv())	_value = ~_value;
+   }
    // for Aig
    else {
       unsigned input1, input2;

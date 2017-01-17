@@ -173,6 +173,8 @@ CirMgr::readCircuit(const string& fileName)
 	// all the gate are store in map _gateList
 	// every type of gate has its own IDList
    _gateList.init(getHashSize(_M));
+   _FECList = new vector<FECGrp*>;
+   FECGrp* initGrp = new FECGrp;
 	// Const 0
 	CirGate* c0 = new ConstGate;
 	_gateList.insert(0, c0);
@@ -210,15 +212,18 @@ CirMgr::readCircuit(const string& fileName)
 		CirGate* aig = new AigGate(content/2, line, input1, input2);
 		_gateList.insert(content/2, aig);
 		_AigList.push_back(content/2);
+      initGrp->push_back(aig);
 	}
 	// when gates are constructed, inputs are stored as literal ID
 	// now link them with pointers
 	for(unsigned i=0; i<_A; i++) {   getGate(_AigList[i])->connectLinks(); }
 	for(unsigned i=1; i<=_O; i++) {	getGate(_M+i)->connectLinks();	}
-	// set _floatingList, _unUsedList, and _dfsList
+	// set _floatingList, _unUsedList,  _dfsList, and _FECList
 	setFloatingList();
 	setUnUsedList();
    setDFSList();
+   _FECList->push_back(initGrp);
+   _FECReady = false;
 	// symbols
 	// stored in map _symbolList
 	char head;
@@ -235,8 +240,6 @@ CirMgr::readCircuit(const string& fileName)
 			_symbolList[_POList[content]] = name;	break;
 		}
 	}
-   // initiate FECList
-   _FECList = new vector<FECGrp*>;
 	input.close();
    return true;
 }
@@ -315,7 +318,7 @@ CirMgr::printFECPairs() const
 void
 CirMgr::writeAag(ostream& outfile) const
 {
-	// make a DFS list of Aig gates
+	// make a DFS only list of Aig gates
 	IdList DFSAigList;
 	for(size_t i=0; i<_AigList.size(); i++)
 		if(!getGate(_AigList[i])->unUsed())	DFSAigList.push_back(_AigList[i]);

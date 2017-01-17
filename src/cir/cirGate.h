@@ -100,6 +100,7 @@ protected:
 		size_t	_gateSP;
 	};
 
+public:
    // basic helping functions
 	virtual void connectLinks() = 0;
 	bool addFanout(CirGateSP p);
@@ -258,7 +259,7 @@ class ConstGate :public CirGate
    friend class CirMgr;
 
 public:
-	ConstGate(): CirGate(0, 0) {}
+	ConstGate(): CirGate(0, 0) { _value = 0; }
 	~ConstGate() {}
 
    string getTypeStr() const { return "CONST"; }

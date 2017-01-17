@@ -34,9 +34,9 @@ using namespace std;
 void
 CirMgr::strash()
 {
-   HashMap<StrashKey, CirGate*>  strashMap(getHashSize(_A));
+   HashMap<StrashKey, CirGate_p>  strashMap(getHashSize(_A));
    StrashKey key;
-   CirGate* temp, host;
+   CirGate_p temp, host;
    for(size_t i=0, n = _dfsList.size(); i<n; i++) {
       temp = getGate(_dfsList[i]);
       if(!temp->isAig())   continue;

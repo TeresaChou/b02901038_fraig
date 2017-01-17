@@ -51,6 +51,7 @@ public:
    void optimize();
 
    // Member functions about simulation
+   bool FECReady() const { return _FECReady; }
    void randomSim();
    void fileSim(ifstream&);
    void setSimLog(ofstream *logFile) { _simLog = logFile; }
@@ -86,12 +87,15 @@ private:
 	bool mergeGate(CirGate* from, CirGate* to);
 
    // functions for simulating
-   void divideFEC();
+   bool divideFEC();
+   bool simulate(unsigned* inputs);
+   bool writeSimLog(unsigned * inputs, unsigned n = sizeof(unsigned)*8);
 
    ofstream				        *_simLog;
 	HashMap<ID, CirGate*>		_gateList;
 	map<unsigned, string>		_symbolList;
    vector<FECGrp*>           *_FECList;
+   bool                       _FECReady;
 	unsigned							_M, _I, _L, _O, _A;
 	IdList							_PIList, _POList, _AigList;
    IdList                     _floatingList, _unUsedList, _dfsList;

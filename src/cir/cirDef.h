@@ -16,12 +16,14 @@ using namespace std;
 
 // TODO: define your own typedef or enum
 
-typedef vector<unsigned>	IdList;
-typedef vector<CirGate*>	FECGrp;
-
 class CirGate;
 class CirMgr;
 class SatSolver;
+
+typedef vector<unsigned>	IdList;
+typedef vector<CirGate*>	FECGrp;
+typedef vector<CirGate*>*	FECGrp_p;
+typedef CirGate*				CirGate_p;
 
 enum opt
 {
