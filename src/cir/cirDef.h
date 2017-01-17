@@ -17,6 +17,7 @@ using namespace std;
 // TODO: define your own typedef or enum
 
 typedef vector<unsigned>	IdList;
+typedef vector<CirGate*>	FECGrp;
 
 class CirGate;
 class CirMgr;

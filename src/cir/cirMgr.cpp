@@ -235,6 +235,8 @@ CirMgr::readCircuit(const string& fileName)
 			_symbolList[_POList[content]] = name;	break;
 		}
 	}
+   // initiate FECList
+   _FECList = new vector<FECGrp*>;
 	input.close();
    return true;
 }

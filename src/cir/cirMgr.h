@@ -74,18 +74,24 @@ public:
 	string getSymb(unsigned id) const;
 
 private:
-   // private helping functions
-	bool removeGate(unsigned id);
-	bool mergeGate(unsigned idfrom, unsigned idto);
+   // basic helping functions
    bool freeGate(unsigned id, CirGate* target);
    bool removeFromAigList(unsigned id);
 	void setFloatingList(bool AigOnly = false);
 	void setUnUsedList(bool AigOnly = false);
    void setDFSList();
 
+   // functions for optimizing and fraig
+	bool removeGate(unsigned id);
+	bool mergeGate(CirGate* from, CirGate* to);
+
+   // functions for simulating
+   void divideFEC();
+
    ofstream				        *_simLog;
 	HashMap<ID, CirGate*>		_gateList;
 	map<unsigned, string>		_symbolList;
+   vector<FECGrp*>           *_FECList;
 	unsigned							_M, _I, _L, _O, _A;
 	IdList							_PIList, _POList, _AigList;
    IdList                     _floatingList, _unUsedList, _dfsList;

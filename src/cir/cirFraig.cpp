@@ -34,21 +34,32 @@ using namespace std;
 void
 CirMgr::strash()
 {
-   HashMap<StrashKey, unsigned>  strashMap(getHashSize(_A));
+   HashMap<StrashKey, CirGate*>  strashMap(getHashSize(_A));
    StrashKey key;
-   unsigned host;
-   CirGate* temp;
+   CirGate* temp, host;
    for(size_t i=0, n = _dfsList.size(); i<n; i++) {
       temp = getGate(_dfsList[i]);
       if(!temp->isAig())   continue;
       key = temp->getStrashKey();
-      if(strashMap.query(key, host))   mergeGate(_dfsList[i], host);
-      else  strashMap.insert(key, _dfsList[i]);
+      if(strashMap.query(key, host)) {
+         cout << "Strashing: ";
+         mergeGate(temp, host);
+      }
+      else  strashMap.insert(key, temp);
    }
    _floatingList.clear();
    setFloatingList();
 }
 
+bool
+CirMgr::mergeGate(CirGate* from, CirGate* to)
+{
+   if(from == to) return false;
+	from->mergeInto(to);
+   cout << to->getGateID() << " merging " << from->getGateID() << " ..." << endl;
+   freeGate(from->getGateID(), from);
+	return true;
+}
 void
 CirMgr::fraig()
 {

@@ -53,6 +53,11 @@ public:
 	virtual bool isAig() const = 0;
    unsigned getLineNo() const { return _lineNo; }
 	unsigned getGateID() const { return _gateID; }
+   opt checkOpt() const;
+   // bool isMarked() const { return (_markFlag == _markFlagRef); }
+	bool floating() const;
+	bool unUsed() const { return _fanout.empty(); }
+	unsigned faninLiteral(size_t i) const { return _fanin[i].literal(); }
    virtual StrashKey getStrashKey() const = 0;
 	
    // Printing functions
@@ -95,20 +100,21 @@ protected:
 		size_t	_gateSP;
 	};
 
-public:
-	// other helping functions
+   // basic helping functions
 	virtual void connectLinks() = 0;
-	void clearFanin();
 	bool addFanout(CirGateSP p);
-	void changeFanin(CirGateSP from, CirGateSP to);
 	void delFanout(CirGateSP p);
+	void clearFanin();
+	void changeFanin(CirGateSP from, CirGateSP to);
+
+	// optimizing functions
 	void mergeInto(CirGate* host);
    void replaceByConst(CirGate* gate, unsigned sign);
    void replaceByFanin(unsigned number);
-   opt checkOpt() const;
-	bool floating() const;
-	bool unUsed() const { return _fanout.empty(); }
-	unsigned faninLiteral(size_t i) const { return _fanin[i].literal(); }
+
+   // simulating functions
+   void feedInput(unsigned input) { _value = input;   _markFlag = _markFlagRef; }
+   unsigned getSimValue();
 
 	static size_t		_markFlagRef;
 private:
@@ -119,6 +125,7 @@ private:
 protected:
 	unsigned				_gateID;
 	unsigned				_lineNo;
+   unsigned          _value;
 	mutable size_t		_markFlag;
 	vector<CirGateSP>	_fanin;
 	vector<CirGateSP>	_fanout;
@@ -127,6 +134,8 @@ protected:
 
 class AigGate	:public CirGate
 {
+   friend class CirMgr;
+
 public:
 	// when first constructed, inputs are all stored as literal IDs
 	// member function connectLink() has to be called afterward to link them as pointers
@@ -183,6 +192,8 @@ private:
 
 class PIGate :public CirGate
 {
+   friend class CirMgr;
+
 public:
 	PIGate(unsigned id, unsigned line): CirGate(id, line) {}
 	~PIGate() {}
@@ -203,6 +214,8 @@ private:
 
 class POGate :public CirGate
 {
+   friend class CirMgr;
+
 public:
 	// when first constructed, inputs are all stored as literal IDs
 	// member function connectLink() has to be called afterward to link them as pointers
@@ -242,6 +255,8 @@ private:
 
 class ConstGate :public CirGate
 {
+   friend class CirMgr;
+
 public:
 	ConstGate(): CirGate(0, 0) {}
 	~ConstGate() {}

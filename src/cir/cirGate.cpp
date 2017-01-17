@@ -101,16 +101,6 @@ CirGate::setDFSList_RC(IdList& _dfsList) const
 	}
 }
 
-// doesn't change the _fanin list itself
-void
-CirGate::clearFanin() {
-	unsigned sign;
-	for(vector<CirGateSP>::iterator it = _fanin.begin(); it!=_fanin.end(); it++) {
-      if(it->isFlt())   continue;
-		sign = (it->isInv()? 1: 0);
-		it->gate()->delFanout(CirGateSP(this, sign));
-	}
-}
 
 bool
 CirGate::addFanout(CirGateSP p)
@@ -120,6 +110,24 @@ CirGate::addFanout(CirGateSP p)
 	_fanout.push_back(p);
    ::sort(_fanout.begin(), _fanout.end());
 	return true;
+}
+
+
+void
+CirGate::delFanout(CirGateSP p){
+	for(vector<CirGateSP>::iterator it = _fanout.begin(); it!=_fanout.end(); it++)
+		if(*it == p)	{ _fanout.erase(it); break; }
+}
+
+// doesn't change the _fanin list itself
+void
+CirGate::clearFanin() {
+	unsigned sign;
+	for(vector<CirGateSP>::iterator it = _fanin.begin(); it!=_fanin.end(); it++) {
+      if(it->isFlt())   continue;
+		sign = (it->isInv()? 1: 0);
+		it->gate()->delFanout(CirGateSP(this, sign));
+	}
 }
 
 // two funcions to change GateSP list
@@ -132,82 +140,6 @@ CirGate::changeFanin(CirGateSP from, CirGateSP to){
 			else *it = to;
 			break;
 		}
-}
-
-void
-CirGate::delFanout(CirGateSP p){
-	for(vector<CirGateSP>::iterator it = _fanout.begin(); it!=_fanout.end(); it++)
-		if(*it == p)	{ _fanout.erase(it); break; }
-}
-
-void
-CirGate::mergeInto(CirGate* host)
-{
-	unsigned sign;
-	CirGateSP from(0), to(0);
-	for(vector<CirGateSP>::iterator it = _fanin.begin(); it!=_fanin.end(); it++) {
-      if(it->isFlt())   continue;
-		sign = it->isInv()? 1: 0;
-		from = CirGateSP(this, sign);
-		to = CirGateSP(host, sign);
-		it->gate()->delFanout(from);
-		it->gate()->addFanout(to);
-	}
-	for(vector<CirGateSP>::iterator it = _fanout.begin(); it!=_fanout.end(); it++) {
-		sign = it->isInv()? 1: 0;
-		from = CirGateSP(this, sign);
-		to = CirGateSP(host, sign);
-		it->gate()->changeFanin(from, to);
-		host->addFanout(*it);
-	}
-}
-
-void
-CirGate::replaceByConst(CirGate* gate, unsigned sign)
-{
-   CirGateSP input(gate, sign);
-   clearFanin();
-	for(vector<CirGateSP>::iterator it = _fanout.begin(); it!=_fanout.end(); it++) {
-      sign = it->isInv()? 1: 0;
-      it->gate()->changeFanin(CirGateSP(this, sign), input);
-   }
-   cout << "Simplifying: " << gate->getGateID() << " merging "
-        << _gateID << "..." << endl;
-}
-
-void
-CirGate::replaceByFanin(unsigned number)
-{
-   unsigned sign;
-   bool sign_in = _fanin[number].isInv();
-   CirGateSP to(0);
-   clearFanin();
-	for(vector<CirGateSP>::iterator it = _fanout.begin(); it!=_fanout.end(); it++) {
-      sign = it->isInv()? 1: 0;
-      if(sign_in) {
-         _fanin[number].gate()->addFanout(CirGateSP(it->gate(), (sign+1)%2));
-         to = CirGateSP(_fanin[number].gate(), (sign+1)%2);
-      }
-      else {
-         _fanin[number].gate()->addFanout(*it);
-         to = _fanin[number];
-      }
-      it->gate()->changeFanin(CirGateSP(this, sign), to);
-   }
-   cout << "Simplifying: " << _fanin[number].gate()->getGateID() << " merging "
-        << _gateID << "..." << endl;
-}
-
-opt
-CirGate::checkOpt() const
-{
-   if(_fanin[0].literal() == 0)  return X_0;
-   if(_fanin[0].literal() == 1)  return X_1;
-   if(_fanin[0].literal()/2 == _fanin[1].literal()/2) {
-      if(_fanin[0].literal() == _fanin[1].literal())  return X_X;
-      else return X_nX;
-   }
-   return X_Y;
 }
 
 bool
