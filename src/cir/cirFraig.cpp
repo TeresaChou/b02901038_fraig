@@ -51,6 +51,45 @@ CirMgr::strash()
    setFloatingList();
 }
 
+void
+CirMgr::fraig()
+{
+   SatSolver sat;
+   sat.initialize();
+   
+   genProofModel(sat);
+
+   unsigned newInput = 0;
+   FECGrp_p group;
+   unsigned* sampleInputs = new unsigned[_I];
+   for(size_t i=0; i<_I; i++) sampleInputs[i] = 0;
+   while(!_FECList->empty()) {
+      group = _FECList->back();
+      for(size_t j = 0, m = group->size(); j<m-1; j++)
+         for(size_t k = j+1; k<m; k++) {
+            if(!proveSat(sat, (*group)[j], (*group)[k], sampleInputs)) {
+               mergeGate((*group)[j], (*group)[k]);   break;
+            }
+            else newInput++;
+         }
+      delete group;
+      _FECList->pop_back();
+      if(newInput > 20) {
+         simulate(sampleInputs);
+         cout << newInput << " patterns simulated." << endl;
+         for(size_t i=0; i<_I; i++) sampleInputs[i] = 0;
+         newInput = 0;
+      }
+   }
+   delete _FECList;
+   _FECList = new vector<FECGrp*>;
+   strash();
+}
+
+/********************************************/
+/*   Private member functions about fraig   */
+/********************************************/
+
 bool
 CirMgr::mergeGate(CirGate* from, CirGate* to)
 {
@@ -60,11 +99,78 @@ CirMgr::mergeGate(CirGate* from, CirGate* to)
    freeGate(from->getGateID(), from);
 	return true;
 }
+
 void
-CirMgr::fraig()
+CirMgr::genProofModel(SatSolver& sat)
 {
+   CirGate* temp;
+   temp = getGate(0);
+   Var c0 = sat.newVar();
+   temp->setVar(c0);
+   for(size_t i=0; i<_I; i++) {
+      temp = getGate(_PIList[i]);
+      temp->setVar(sat.newVar());
+   }
+   for(size_t i=0; i<_A; i++) {
+      temp = getGate(_AigList[i]);
+      temp->setVar(sat.newVar());
+   }
+   
+   for(size_t i=0; i<_A; i++) {
+      temp = getGate(_AigList[i]);
+      temp->addClause(sat, c0);
+   }
 }
 
-/********************************************/
-/*   Private member functions about fraig   */
-/********************************************/
+void
+CirGate::addClause(SatSolver& sat, Var& c0)
+{
+   Var input1, input2;
+   bool inv1, inv2;
+   if(_fanin[0].isFlt()) {
+      inv1 = false;
+      input1 = c0;
+   }
+   else {
+      inv1 = _fanin[0].isInv();
+      input1 = _fanin[0].gate()->getVar();
+   }
+   if(_fanin[1].isFlt()) {
+      inv2 = false;
+      input2 = c0;
+   }
+   else {
+      inv2 = _fanin[1].isInv();
+      input2 = _fanin[1].gate()->getVar();
+   }
+   sat.addAigCNF(_var, input1, inv1, input2, inv2);
+}
+
+bool
+CirMgr::proveSat(SatSolver& sat, CirGate* gateA, CirGate* gateB, unsigned* sample)
+{
+   bool result;
+   Var topVar = sat.newVar();
+   Var c0 = getGate(0)->getVar();
+   if(gateA->getSimValue() == gateB->getSimValue())
+      sat.addXorCNF(topVar, gateA->getVar(), true, gateB->getVar(), false);
+   else 
+      sat.addXorCNF(topVar, gateA->getVar(), true, gateB->getVar(), false);
+   
+   sat.assumeRelease();
+   sat.assumeProperty(c0, false);
+   sat.assumeProperty(topVar, true);
+   result = sat.assumpSolve();
+
+   cout << "Updating by "<< (result? "SAT": "UNSAT")
+        << "  Total FEC group = " << _FECList->size() << endl;
+   if(result) {
+      CirGate* temp;
+      for(size_t i=0; i<_I; i++) {
+         temp = getGate(_PIList[i]);
+         sample[i] = sample[i] << 1;
+         sample[i] += (unsigned)sat.getValue(temp->getVar());
+      }
+   }
+   return result;
+}

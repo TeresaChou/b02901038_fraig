@@ -39,7 +39,7 @@ CirGate::reportGate() const
 }
 
 void
-CirGate::reportFanin(int level) const
+CirGate::reportFanin(int& level) const
 {
    assert (level >= 0);
 	_markFlagRef++;
@@ -66,7 +66,7 @@ CirGate::reportFaninRC(int level, int tab) const
 }
 
 void
-CirGate::reportFanout(int level) const
+CirGate::reportFanout(int& level) const
 {
    assert (level >= 0);
 	_markFlagRef++;

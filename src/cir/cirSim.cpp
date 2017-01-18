@@ -48,7 +48,7 @@ CirMgr::randomSim()
       count++;
    }
    cout << "MAX_FAILS = " << fail << endl
-        << count*sizeof(unsigned)*8 << "patterns simulated.";
+        << count*sizeof(unsigned)*8 << " patterns simulated.";
 }
 
 void
@@ -112,9 +112,22 @@ CirMgr::simulate(unsigned* inputs)
   return divideFEC();
 }
 
+void
+CirMgr::initFEC()
+{
+   CirGate* temp;
+   FECGrp* initGrp = new FECGrp;
+   for(size_t i=0; i<_A; i++) {
+      temp = getGate(_AigList[i]);
+      if(!temp->unUsed())  initGrp->push_back(temp);
+   }
+   _FECList->push_back(initGrp);
+}
+
 bool
 CirMgr::divideFEC()
 {
+   if(_FECList->empty()) initFEC();
    bool divided;
    vector<FECGrp*>*  newFECList = new vector<FECGrp*>;
    FECGrp_p oriGrp, newGrp;
@@ -125,18 +138,21 @@ CirMgr::divideFEC()
    for(size_t i = 0, n = _FECList->size(); i<n; i++) {
       oriGrp = (*_FECList)[i];
       size_t number = oriGrp->size();
+
       // check if the group can be divided
       simVal = (*oriGrp)[0]->getSimValue();
       divided = false;
       for(size_t j = 1; j<number; j++)
-         if((*oriGrp)[j]->getSimValue() != simVal) { divided = true; break; }
+         if((*oriGrp)[j]->getSimValue() != simVal &&
+            (*oriGrp)[j]->getSimValue() != ~simVal   ) { divided = true; break; }
       if(grpInc > 0) grpInc++; // so it will only equals to 1 for one time
       if(divided) {
          grpInc++;
          HashMap<ID, FECGrp*> newGrps(getHashSize(number));
          for(size_t j = 0; j<number; j++) {
             simVal = (*oriGrp)[j]->getSimValue();
-            if(newGrps.query(simVal, newGrp))   newGrp->push_back((*oriGrp)[j]);
+            if(newGrps.query(simVal, newGrp) || 
+               newGrps.query(~simVal, newGrp)  ) newGrp->push_back((*oriGrp)[j]);
             else {
                newGrp = new FECGrp;
                newGrp->push_back((*oriGrp)[j]);
@@ -160,9 +176,9 @@ CirMgr::divideFEC()
    if(grpInc) {
       delete _FECList;
       _FECList = newFECList;
+      cout << "Total FEC Group = " << _FECList->size() << endl;
    }
    else  delete newFECList;
-   cout << "Total FEC Group = " << _FECList->size() << endl;
    return (grpInc > 0);
 }
 

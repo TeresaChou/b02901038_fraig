@@ -174,7 +174,7 @@ CirMgr::readCircuit(const string& fileName)
 	// every type of gate has its own IDList
    _gateList.init(getHashSize(_M));
    _FECList = new vector<FECGrp*>;
-   FECGrp* initGrp = new FECGrp;
+   _FECReady = false;
 	// Const 0
 	CirGate* c0 = new ConstGate;
 	_gateList.insert(0, c0);
@@ -212,7 +212,6 @@ CirMgr::readCircuit(const string& fileName)
 		CirGate* aig = new AigGate(content/2, line, input1, input2);
 		_gateList.insert(content/2, aig);
 		_AigList.push_back(content/2);
-      initGrp->push_back(aig);
 	}
 	// when gates are constructed, inputs are stored as literal ID
 	// now link them with pointers
@@ -222,8 +221,6 @@ CirMgr::readCircuit(const string& fileName)
 	setFloatingList();
 	setUnUsedList();
    setDFSList();
-   _FECList->push_back(initGrp);
-   _FECReady = false;
 	// symbols
 	// stored in map _symbolList
 	char head;

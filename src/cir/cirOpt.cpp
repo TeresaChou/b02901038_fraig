@@ -136,9 +136,7 @@ CirGate::mergeInto(CirGate* host)
       if(it->isFlt())   continue;
 		sign = it->isInv()? 1: 0;
 		from = CirGateSP(this, sign);
-		to = CirGateSP(host, sign);
 		it->gate()->delFanout(from);
-		it->gate()->addFanout(to);
 	}
 	for(vector<CirGateSP>::iterator it = _fanout.begin(); it!=_fanout.end(); it++) {
 		sign = it->isInv()? 1: 0;

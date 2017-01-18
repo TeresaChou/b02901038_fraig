@@ -85,8 +85,11 @@ private:
    // functions for optimizing and fraig
 	bool removeGate(unsigned id);
 	bool mergeGate(CirGate* from, CirGate* to);
+   void genProofModel(SatSolver& sat);
+   bool proveSat(SatSolver& sat, CirGate* gateA, CirGate* gateB, unsigned* sample);
 
    // functions for simulating
+   void initFEC();
    bool divideFEC();
    bool simulate(unsigned* inputs);
    bool writeSimLog(unsigned * inputs, unsigned n = sizeof(unsigned)*8);

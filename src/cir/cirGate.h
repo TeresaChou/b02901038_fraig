@@ -49,10 +49,12 @@ public:
    virtual ~CirGate() {}
 
    // Basic access methods
+   void setVar(const Var& v) { _var = v; }
    virtual string getTypeStr() const = 0;
 	virtual bool isAig() const = 0;
    unsigned getLineNo() const { return _lineNo; }
 	unsigned getGateID() const { return _gateID; }
+   Var getVar() const { return _var; }
    opt checkOpt() const;
    // bool isMarked() const { return (_markFlag == _markFlagRef); }
 	bool floating() const;
@@ -63,8 +65,8 @@ public:
    // Printing functions
    virtual void printGate() const = 0;		// called by print netlist
    void reportGate() const;
-   void reportFanin(int level) const;
-   void reportFanout(int level) const;
+   void reportFanin(int& level) const;
+   void reportFanout(int& level) const;
 	void setDFSList_RC(IdList& _dfsList) const;
 
 protected:
@@ -108,8 +110,9 @@ public:
 	void clearFanin();
 	void changeFanin(CirGateSP from, CirGateSP to);
 
-	// optimizing functions
+	// optimizing and fraig functions
 	void mergeInto(CirGate* host);
+   void addClause(SatSolver& sat, Var& c0);
    void replaceByConst(CirGate* gate, unsigned sign);
    void replaceByFanin(unsigned number);
 
@@ -127,6 +130,7 @@ protected:
 	unsigned				_gateID;
 	unsigned				_lineNo;
    unsigned          _value;
+   Var               _var;
 	mutable size_t		_markFlag;
 	vector<CirGateSP>	_fanin;
 	vector<CirGateSP>	_fanout;
