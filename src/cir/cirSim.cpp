@@ -120,32 +120,50 @@ CirMgr::divideFEC()
    FECGrp_p oriGrp, newGrp;
    // for some reason I just have to use FECGrp_p instead of FECGrp*
    // otherwise the compiler doesn't let me use them as parameter for function calling
-   unsigned simVal;
+   unsigned simVal, grpInc = 0;
    _FECReady = true;
    for(size_t i = 0, n = _FECList->size(); i<n; i++) {
       oriGrp = (*_FECList)[i];
-      HashMap<ID, FECGrp*> newGrps(getHashSize(_A));
-      for(size_t j = 0, m = oriGrp->size(); j<m; j++) {
-         simVal = (*oriGrp)[j]->getSimValue();
-         if(newGrps.query(simVal, newGrp))   newGrp->push_back((*oriGrp)[j]);
-         else {
-            newGrp = new FECGrp;
-            newGrp->push_back((*oriGrp)[j]);
-            newGrps.insert(simVal, newGrp);
+      size_t number = oriGrp->size();
+      // check if the group can be divided
+      simVal = (*oriGrp)[0]->getSimValue();
+      divided = false;
+      for(size_t j = 1; j<number; j++)
+         if((*oriGrp)[j]->getSimValue() != simVal) { divided = true; break; }
+      if(grpInc > 0) grpInc++; // so it will only equals to 1 for one time
+      if(divided) {
+         grpInc++;
+         HashMap<ID, FECGrp*> newGrps(getHashSize(number));
+         for(size_t j = 0; j<number; j++) {
+            simVal = (*oriGrp)[j]->getSimValue();
+            if(newGrps.query(simVal, newGrp))   newGrp->push_back((*oriGrp)[j]);
+            else {
+               newGrp = new FECGrp;
+               newGrp->push_back((*oriGrp)[j]);
+               newGrps.insert(simVal, newGrp);
+            }
          }
+         for(HashMap<ID, FECGrp*>::iterator it = newGrps.begin(); it != newGrps.end(); it++) {
+            if((*it).second->size() > 3) _FECReady = false;
+            if((*it).second->size() > 1) newFECList->push_back((*it).second);
+            else delete (*it).second;
+         }
+         delete oriGrp;
       }
-      for(HashMap<ID, FECGrp*>::iterator it = newGrps.begin(); it != newGrps.end(); it++) {
-         if((*it).second->size() > 3) _FECReady = false;
-         if((*it).second->size() > 1) newFECList->push_back((*it).second);
-         else delete (*it).second;
-      }
-      delete oriGrp;
-      if(newGrps.begin()++ == newGrps.end()) divided = false;
-      else divided = true;
+      else if(grpInc > 1)  newFECList->push_back(oriGrp);
+      if(grpInc == 1)   
+         for(size_t k = 0; k<i; k++) {
+            oriGrp = (*_FECList)[k];
+            newFECList->push_back(oriGrp);
+         }
    }
-   delete _FECList;
-   _FECList = newFECList;
-   return divided;
+   if(grpInc) {
+      delete _FECList;
+      _FECList = newFECList;
+   }
+   else  delete newFECList;
+   cout << "Total FEC Group = " << _FECList->size() << endl;
+   return (grpInc > 0);
 }
 
 bool
